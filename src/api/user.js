@@ -12,6 +12,7 @@ export const login = data => {
   })
 }
 
+// 获取验证码
 // 注意：手机号每分钟1次
 export const sendSms = mobile => {
   return request({
@@ -31,5 +32,13 @@ export const getUserInfo = () => {
     //   //      token的数据格式：Bearer token数据，注意 Bearer 后面有个空格
     //   Authorization: `Bearer ${store.state.user.token}`
     // }
+  })
+}
+
+// 获取用户频道列表的数据
+export const getUserChannels = () => {
+  return request({
+    method: 'GET',
+    url: '/app/v1_0/user/channels'
   })
 }

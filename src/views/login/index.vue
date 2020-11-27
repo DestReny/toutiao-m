@@ -61,7 +61,7 @@
 import { login, sendSms } from '@/api/user.js'
 
 export default {
-  name: 'LoginPage',
+  name: 'LoginIndex',
   components: {},
   props: {},
   data() {

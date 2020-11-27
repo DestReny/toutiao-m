@@ -92,7 +92,7 @@ export default {
   mounted() {},
   methods: {
     onLogout() {
-      console.log('onLogout')
+      // console.log('onLogout')
       // 退出提示
       // 在组件中需要使用 this.$dialog 来调用弹框组件
       this.$dialog
@@ -106,7 +106,7 @@ export default {
         })
         .catch(() => {
           // on cancel
-          console.log('取消执行这里')
+          // console.log('取消执行这里')
         })
     },
 

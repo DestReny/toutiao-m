@@ -4,7 +4,7 @@
 
 <script>
 export default {
-  name: 'QaPage',
+  name: 'QaIndex',
   components: {},
   props: {},
   data() {
