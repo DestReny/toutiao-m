@@ -151,7 +151,7 @@ export default {
 </script>
 
 <style scoped lang="less">
-.article-list {
+/deep/ .article-list {
   // 百分比单位是相对于父元素的
   // height: 100%;
   // 1vw = 视图窗口宽度的百分之一
