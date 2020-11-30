@@ -18,15 +18,24 @@
     <!-- /搜索栏 -->
 
     <!-- 搜索结果 -->
-    <search-result v-if="isResultShow" />
+    <search-result v-if="isResultShow" :search-text="searchText" />
     <!-- /搜索结果 -->
 
     <!-- 联想建议 -->
-    <search-suggestion v-else-if="searchText" :search-text="searchText" />
+    <search-suggestion
+      v-else-if="searchText"
+      :search-text="searchText"
+      @search="onSearch"
+    />
     <!-- /联想建议 -->
 
     <!-- 历史记录 -->
-    <search-history v-else />
+    <search-history
+      v-else
+      :search-histories="SearchHistories"
+      @clear-search-histories="SearchHistories = []"
+      @search="onSearch"
+    />
     <!-- /历史记录 -->
   </div>
 </template>
@@ -35,6 +44,7 @@
 import SearchSuggestion from './components/search-suggestion.vue'
 import SearchHistory from './components/search-history.vue'
 import SearchResult from './components/search-result.vue'
+import { setItem, getItem } from '@/utils/storage.js'
 
 export default {
   components: { SearchSuggestion, SearchHistory, SearchResult },
@@ -42,11 +52,31 @@ export default {
   data() {
     return {
       searchText: '', // 搜索输入框的内容
-      isResultShow: false // 控制搜索结果的显示状态
+      isResultShow: false, // 控制搜索结果的显示状态
+      SearchHistories: getItem('TOUTIAO_SEARCH_HISTORIES') || [] // 搜索的历史记录数据
     }
   },
+  watch: {
+    SearchHistories(value) {
+      setItem('TOUTIAO_SEARCH_HISTORIES', value)
+    }
+    // 完整写法，（支持更多的自定义配置）
+    // SearchHistories: {
+    //   handler() {}
+    // }
+  },
   methods: {
-    onSearch() {
+    onSearch(val) {
+      // 更新文本框内容
+      this.searchText = val
+      // 存储搜索历史记录
+      // 要求：不要有重复历史记录、最新的排在最前面
+      const index = this.SearchHistories.indexOf(val)
+      if (index !== -1) {
+        this.SearchHistories.splice(index, 1)
+      }
+      this.SearchHistories.unshift(val)
+      // 渲染搜索结果
       this.isResultShow = true
     }
   }
