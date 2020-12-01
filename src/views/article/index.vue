@@ -1,20 +1,25 @@
 <template>
   <div class="article-container">
     <!-- 导航栏 -->
-    <van-nav-bar class="page-nav-bar" left-arrow title="黑马头条"></van-nav-bar>
+    <van-nav-bar
+      class="page-nav-bar"
+      left-arrow
+      title="黑马头条"
+      @click-left="$router.back()"
+    ></van-nav-bar>
     <!-- /导航栏 -->
 
     <div class="main-wrap">
       <!-- 加载中 -->
-      <div class="loading-wrap">
+      <div v-if="loading" class="loading-wrap">
         <van-loading color="#3296fa" vertical>加载中</van-loading>
       </div>
       <!-- /加载中 -->
 
       <!-- 加载完成-文章详情 -->
-      <div class="article-detail">
+      <div v-else-if="article.title" class="article-detail">
         <!-- 文章标题 -->
-        <h1 class="article-title">这是文章标题</h1>
+        <h1 class="article-title">{{ article.title }}</h1>
         <!-- /文章标题 -->
 
         <!-- 用户信息 -->
@@ -24,76 +29,109 @@
             slot="icon"
             round
             fit="cover"
-            src="https://img.yzcdn.cn/vant/cat.jpeg"
+            :src="article.aut_photo"
           />
-          <div slot="title" class="user-name">黑马头条号</div>
-          <div slot="label" class="publish-date">14小时前</div>
-          <van-button
+          <div slot="title" class="user-name">{{ article.aut_name }}</div>
+          <div slot="label" class="publish-date">
+            {{ article.pubdate | relativeTime }}
+          </div>
+          <!--
+            模板中的 $event 是事件参数
+            当我们传递给予组件的数据既要使用还要修改
+              传递：props
+                :is-followed="article.is_followed"
+              修改：自定义事件
+                @update-is_followed="article.is_followed = $event"
+            简写方式：在组件上使用 v-model
+              value="article.is_followed"
+              @input="article.is_followed = $event
+
+            如果需要修改 v-model 的规则名称，可以通过子组件的 model 属性来配置修改
+
+            一个组件上只能使用一次 v-model
+            如果有大哥数据需要时间类似于 v-model 的效果，咋办？
+            可以使用属性的 .sync
+            -->
+          <follow-user
             class="follow-btn"
-            type="info"
-            color="#3296fa"
-            round
-            size="small"
-            icon="plus"
-            >关注</van-button
-          >
-          <!-- <van-button
-            class="follow-btn"
-            round
-            size="small"
-          >已关注</van-button> -->
+            :user-id="article.aut_id"
+            v-model="article.is_followed"
+          />
         </van-cell>
         <!-- /用户信息 -->
 
         <!-- 文章内容 -->
-        <div class="article-content">这是文章内容</div>
+        <div
+          class="article-content markdown-body"
+          v-html="article.content"
+          ref="article-content"
+        ></div>
         <van-divider>正文结束</van-divider>
+        <!-- 底部区域 -->
+        <div class="article-bottom">
+          <van-button class="comment-btn" type="default" round size="small"
+            >写评论</van-button
+          >
+          <van-icon name="comment-o" badge="123" color="#777" />
+          <collect-article
+            v-model="article.is_collected"
+            :article-id="article.art_id"
+          />
+          <like-article
+            v-model="article.attitude"
+            :article-id="article.art_id"
+          />
+          <van-icon name="share" color="#777777"></van-icon>
+        </div>
+        <!-- /底部区域 -->
       </div>
       <!-- /加载完成-文章详情 -->
 
       <!-- 加载失败：404 -->
-      <div class="error-wrap">
+      <div v-else-if="errStatus === 404" class="error-wrap">
         <van-icon name="failure" />
         <p class="text">该资源不存在或已删除！</p>
       </div>
       <!-- /加载失败：404 -->
 
       <!-- 加载失败：其它未知错误（例如网络原因或服务端异常） -->
-      <div class="error-wrap">
+      <div v-else class="error-wrap">
         <van-icon name="failure" />
         <p class="text">内容加载失败！</p>
-        <van-button class="retry-btn">点击重试</van-button>
+        <van-button class="retry-btn" @click="loadArticle">点击重试</van-button>
       </div>
       <!-- /加载失败：其它未知错误（例如网络原因或服务端异常） -->
     </div>
-
-    <!-- 底部区域 -->
-    <div class="article-bottom">
-      <van-button class="comment-btn" type="default" round size="small"
-        >写评论</van-button
-      >
-      <van-icon name="comment-o" info="123" color="#777" />
-      <van-icon color="#777" name="star-o" />
-      <van-icon color="#777" name="good-job-o" />
-      <van-icon name="share" color="#777777"></van-icon>
-    </div>
-    <!-- /底部区域 -->
   </div>
 </template>
 
 <script>
 import { getArticleById } from '@/api/article.js'
+import { ImagePreview } from 'vant'
+import FollowUser from '@/components/follow-user/index.vue'
+import CollectArticle from '@/components/collect-article/index.vue'
+import LikeArticle from '@/components/like-article/index.vue'
 
 export default {
   name: 'ArticleIndex',
+  components: {
+    FollowUser,
+    CollectArticle,
+    LikeArticle
+  },
   props: {
     articleId: {
-      type: [Number, String],
+      type: [Number, String, Object],
       required: true
     }
   },
   data() {
-    return {}
+    return {
+      article: [], // 文章详情
+      loading: true, // 加载中的 loading 状态
+      errStatus: 0, // 失败的状态码
+      followLoading: false
+    }
   },
   created() {
     this.loadArticle()
@@ -102,16 +140,47 @@ export default {
     async loadArticle() {
       try {
         const { data } = await getArticleById(this.articleId)
-        console.log(data)
+        // 数据驱动视图这件事儿不是立即的
+        this.article = data.data
+        // 初始化图片点击预览
+        setTimeout(() => {
+          // console.log(this.$refs['article-content'])
+          this.previewImage()
+        }, 0)
       } catch (err) {
-        console.log('获取文章失败！', err)
+        if (err.response && err.response.status === 404) {
+          this.errStatus = 404
+        }
       }
+      // 无论成功还是失败都要关闭 loading
+      this.loading = false
+    },
+    previewImage() {
+      // 得到所有的 img 节点
+      const articleContent = this.$refs['article-content']
+      const imgs = articleContent.querySelectorAll('img')
+      //
+      const images = []
+      imgs.forEach((img, index) => {
+        images.push(img.src)
+        img.onclick = () => {
+          // 给每个 img 注册点击事件，在处理函数中调用预览
+          ImagePreview({
+            // 预览的图片地址数组
+            images,
+            // 起始位置，从 0 开始
+            startPosition: index
+          })
+        }
+      })
     }
   }
 }
 </script>
 
 <style scoped lang="less">
+@import './github-markdown.css';
+
 .article-container {
   .main-wrap {
     position: fixed;
