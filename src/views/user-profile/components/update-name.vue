@@ -67,8 +67,6 @@ export default {
         this.$emit('input', localName)
         // 关闭弹层
         this.$emit('close')
-        // 提示成功
-        this.$toast.success('更新成功')
       } catch (err) {
         this.$toast('更新失败')
       }
